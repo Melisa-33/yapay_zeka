@@ -9,6 +9,9 @@ batch_size = 64
 learning_rate = 0.001
 num_epochs = 5
 
+# CUDA Kullanımı
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 # Veri Ön İşleme ve Yükleme
 transform = transforms.Compose([
     transforms.ToTensor(),
@@ -39,7 +42,7 @@ class SimpleCNN(nn.Module):
             nn.Flatten(),
             nn.Linear(50 * 4 * 4, 500),  # 50x4x4 öznitelik haritasını düzleştirip 500 birime bağla
             nn.ReLU(),
-            nn.Dropout(p=0.2),        
+            nn.Dropout(p=0.5),
             nn.Linear(500, 10)           # 10 sınıf
         )
 
@@ -49,7 +52,7 @@ class SimpleCNN(nn.Module):
         return x
 
 # Model, Kayıp Fonksiyonu, Optimizasyon
-model = SimpleCNN().to()
+model = SimpleCNN().to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -61,7 +64,7 @@ def train(model, train_loader, criterion, optimizer, num_epochs):
         correct = 0
         total = 0
         for batch_idx, (data, target) in enumerate(train_loader):
-            data, target = data.to(), target.to()
+            data, target = data.to(device), target.to(device)
             optimizer.zero_grad()
             output = model(data)
             loss = criterion(output, target)
@@ -74,7 +77,7 @@ def train(model, train_loader, criterion, optimizer, num_epochs):
             correct += pred.eq(target.view_as(pred)).sum().item()
             total += target.size(0)
 
-        print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {total_loss / len(train_loader):.4f}, Accuracy: {correct / total:.4f}")
+        print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {total_loss / len(train_loader):.4f}")
 
 def test(model, test_loader):
     model.eval()
@@ -82,7 +85,7 @@ def test(model, test_loader):
     total = 0
     with torch.no_grad():
         for data, target in test_loader:
-            data, target = data.to(), target.to()
+            data, target = data.to(device), target.to(device)
             output = model(data)
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
@@ -99,7 +102,7 @@ test(model, test_loader)
 def plot_predictions(model, test_loader):
     model.eval()
     data, labels = next(iter(test_loader))  # Test verisinden bir batch al
-    data, labels = data.to(), labels.to()  # Veriyi GPU'ya taşı
+    data, labels = data.to(device), labels.to(device)  # Veriyi GPU'ya taşı
     output = model(data)
     preds = output.argmax(dim=1, keepdim=True)
 
