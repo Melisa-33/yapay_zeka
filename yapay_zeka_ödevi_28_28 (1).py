@@ -9,9 +9,6 @@ batch_size = 64
 learning_rate = 0.001
 num_epochs = 5
 
-# CUDA Kullanımı
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 # Veri Ön İşleme ve Yükleme
 transform = transforms.Compose([
     transforms.ToTensor(),
@@ -32,7 +29,7 @@ class SimpleCNN(nn.Module):
             nn.Conv2d(1, 20, kernel_size=5),    # 1 giriş kanalı, 20 çıkış kanalı (28x28 -> 24x24)
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),  # 24x24 -> 12x12
-
+            
             nn.Conv2d(20, 50, kernel_size=5),  # 20 giriş kanalı, 50 çıkış kanalı (12x12 -> 8x8)
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2)   # 8x8 -> 4x4
@@ -42,7 +39,7 @@ class SimpleCNN(nn.Module):
             nn.Flatten(),
             nn.Linear(50 * 4 * 4, 500),  # 50x4x4 öznitelik haritasını düzleştirip 500 birime bağla
             nn.ReLU(),
-            nn.Dropout(p=0.5),
+            nn.Dropout(p=0.3),
             nn.Linear(500, 10)           # 10 sınıf
         )
 
@@ -52,7 +49,7 @@ class SimpleCNN(nn.Module):
         return x
 
 # Model, Kayıp Fonksiyonu, Optimizasyon
-model = SimpleCNN().to(device)
+model = SimpleCNN()
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -64,7 +61,6 @@ def train(model, train_loader, criterion, optimizer, num_epochs):
         correct = 0
         total = 0
         for batch_idx, (data, target) in enumerate(train_loader):
-            data, target = data.to(device), target.to(device)
             optimizer.zero_grad()
             output = model(data)
             loss = criterion(output, target)
@@ -85,7 +81,6 @@ def test(model, test_loader):
     total = 0
     with torch.no_grad():
         for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
             output = model(data)
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
@@ -102,14 +97,13 @@ test(model, test_loader)
 def plot_predictions(model, test_loader):
     model.eval()
     data, labels = next(iter(test_loader))  # Test verisinden bir batch al
-    data, labels = data.to(device), labels.to(device)  # Veriyi GPU'ya taşı
     output = model(data)
     preds = output.argmax(dim=1, keepdim=True)
 
     plt.figure(figsize=(10, 10))
     for i in range(9):
         plt.subplot(3, 3, i + 1)
-        plt.imshow(data[i][0].cpu().detach().numpy(), cmap='gray')
+        plt.imshow(data[i][0].numpy(), cmap='gray')
         title_color = 'green' if preds[i].item() == labels[i].item() else 'red'
         plt.title(f"Pred: {preds[i].item()}, True: {labels[i].item()}", color=title_color)
         plt.axis('off')
